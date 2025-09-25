@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Security Alerts</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
+    h2 { color: #333; }
+    form { margin-bottom: 15px; }
+    input, button { padding: 6px; margin: 5px; }
+    table { border-collapse: collapse; width: 100%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #444; color: white; }
+    tr:nth-child(even) { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h2>🔔 Security Alerts Dashboard</h2>
+
+  <form onsubmit="fetchAlerts(event)">
+    <label>Date: <input type="text" id="date" placeholder="YYYY-MM-DD"></label>
+    <label>Time: <input type="text" id="time" placeholder="HH:MM:SS"></label>
+    <button type="submit">Filter</button>
+  </form>
+
+  <table id="alertsTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Type</th>
+        <th>Confidence</th>
+        <th>People Count</th>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Location</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function fetchAlerts(event) {
+      if (event) event.preventDefault();
+
+      const date = document.getElementById("date").value;
+      const time = document.getElementById("time").value;
+
+      let url = "/get_alerts_filtered?";
+      if (date) url += `date=${date}&`;
+      if (time) url += `time=${time}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      const tbody = document.querySelector("#alertsTable tbody");
+      tbody.innerHTML = "";
+
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7">No alerts found</td></tr>`;
+        return;
+      }
+
+      data.forEach(alert => {
+        const row = `<tr>
+          <td>${alert._id}</td>
+          <td>${alert.type}</td>
+          <td>${alert.confidence}</td>
+          <td>${alert.people_count ?? "-"}</td>
+          <td>${alert.date}</td>
+          <td>${alert.time}</td>
+          <td>${alert.location}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+    }
+
+    // Load alerts on page load
+    fetchAlerts();
+  </script>
+</body>
+</html>

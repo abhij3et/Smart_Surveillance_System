@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Live Crime Detection Dashboard</title>
+<style>
+  /* Color Palette & Typography */
+
+/* Color Palette & Typography */
+:root {
+    --background: #1e1e2d;
+    --card: #27293d;
+    --foreground: #f8f9fa;
+    --muted-foreground: #a9aeb8;
+    --border: #3c4051;
+    --primary: #4e73df;
+    --success: #1cc88a;
+    --warning: #f6c23e;
+    --destructive: #e74a3b;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    background-color: var(--background);
+    color: var(--foreground);
+    margin: 0;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--foreground);
+    margin: 0 0 0.5rem;
+}
+
+h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+p {
+    color: var(--muted-foreground);
+    font-size: 1rem;
+    margin: 0 0 1.5rem;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+}
+
+.dashboard-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); /* Increased min-width for larger cards */
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 1200px;
+    margin-top: 2rem;
+}
+
+.detection-card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.detection-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.video-feed-container {
+    border: 2px solid var(--border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: #000;
+}
+
+.video-feed {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.status-box {
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    font-size: 1em;
+    width: 100%;
+    text-align: center;
+    border: 1px solid transparent;
+    transition: background-color .3s, color .3s, border-color .3s;
+}
+
+.status-box.alert {
+    background: rgba(231, 74, 59, 0.1);
+    color: var(--destructive);
+    border-color: var(--destructive);
+    animation: pulse 1.5s infinite;
+}
+
+.status-box.safe {
+    background: rgba(28, 200, 138, 0.1);
+    color: var(--success);
+    border-color: var(--success);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    body {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .dashboard-container {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+<body>
+  <h1>Live Crime Detection Dashboard</h1>
+  <p>Monitoring for Violence, Weapons, and Crowds in real-time.</p>
+  <hr/>
+  <div class="dashboard-container">
+    <div class="detection-card">
+      <h2>Crowd Detection</h2>
+      <div class="video-feed-container"><img id="crowd-feed" class="video-feed" src="/crowd_feed" alt="Crowd"></div>
+      <div id="crowd-status" class="status-box safe">Calculating...</div>
+    </div>
+
+    <div class="detection-card">
+      <h2>Weapon Detection</h2>
+      <div class="video-feed-container"><img id="weapon-feed" class="video-feed" src="/weapon_feed" alt="Weapon"></div>
+      <div id="weapon-status" class="status-box safe">Safe</div>
+    </div>
+
+    <div class="detection-card">
+      <h2>Violence Detection</h2>
+      <div class="video-feed-container"><img id="violence-feed" class="video-feed" src="/violence_feed" alt="Violence"></div>
+      <div id="violence-status" class="status-box safe">Safe</div>
+    </div>
+  </div>
+
+<script>
+  // Poll faster (500ms) so front-end sees UNSAFE immediately
+  const POLL_MS = 500;
+
+  function updateStatus() {
+    fetch('/get_status').then(r => r.json()).then(data => {
+      // Crowd
+      const crowdBox = document.getElementById('crowd-status');
+      crowdBox.innerText = `Crowd: ${data.crowd_count}`;
+      crowdBox.classList.remove('alert','safe');
+      if (String(data.crowd_count).includes("ALERT")) crowdBox.classList.add('alert'); else crowdBox.classList.add('safe');
+
+      // Weapon
+      const weaponBox = document.getElementById('weapon-status');
+      weaponBox.innerText = `Weapon Status: ${data.weapon_status}`;
+      weaponBox.classList.remove('alert','safe');
+      if (String(data.weapon_status).toUpperCase().includes("UNSAFE")) {
+        weaponBox.classList.add('alert');
+      } else {
+        weaponBox.classList.add('safe');
+      }
+
+      // Violence
+      const vioBox = document.getElementById('violence-status');
+      vioBox.innerText = `Violence Status: ${data.violence_status}`;
+      vioBox.classList.remove('alert','safe');
+      if (String(data.violence_status).toUpperCase().includes("ALERT")) vioBox.classList.add('alert'); else vioBox.classList.add('safe');
+
+    }).catch(err => {
+      // console.warn('status fetch failed', err);
+    });
+  }
+
+  setInterval(updateStatus, POLL_MS);
+  // run immediately on load
+  updateStatus();
+</script>
+</body>
+</html>
+
